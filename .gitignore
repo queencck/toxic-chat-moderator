@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.env.development
 
 # Python
 __pycache__/
@@ -9,9 +10,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
-venv/
-ENV/
 build/
 develop-eggs/
 dist/
@@ -33,7 +31,7 @@ MANIFEST
 htmlcov/
 
 # Virtual Environments
-.venv
+.venv/
 venv/
 env/
 ENV/
@@ -44,7 +42,6 @@ ENV/
 *.swp
 *.swo
 *~
-.DS_Store
 *.sublime-project
 *.sublime-workspace
 
@@ -61,20 +58,19 @@ locustfile_data/
 *.sqlite
 pgdata/
 .postgres_data/
+postgres_data/
 
-# Node modules (for dashboard)
+# Node modules (for frontend)
 node_modules/
-dashboard/dist/
-dashboard/.vite/
+frontend/dist/
+frontend/.vite/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Build artifacts
+# Django
 *.pyc
-**/.pycache
-
-# Local development
-.env.development
-postgres_data/
+db.sqlite3
+staticfiles/
+media/
