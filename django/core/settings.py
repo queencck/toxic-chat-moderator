@@ -45,11 +45,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_hosts',
+    "corsheaders",
     'users',
     'moderate',
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django_hosts.middleware.HostsRequestMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -160,3 +162,7 @@ SIMPLE_JWT = {
 
 # ML Model Server
 ML_MODEL_SERVER_URL = os.getenv('ML_MODEL_SERVER_URL')
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]

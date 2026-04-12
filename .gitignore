@@ -60,8 +60,9 @@ pgdata/
 .postgres_data/
 postgres_data/
 
-# Node modules (for frontend)
+# Node / Frontend
 node_modules/
+frontend/.next/
 frontend/dist/
 frontend/.vite/
 

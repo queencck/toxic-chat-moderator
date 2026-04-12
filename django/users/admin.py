@@ -29,3 +29,4 @@ class BotAdmin(admin.ModelAdmin):
     search_fields = ('uuid', 'user')
     ordering = ('-created_at',)
     readonly_fields = ('uuid', 'created_at')
+    fields = ('user', 'platform', 'is_active', 'uuid', 'created_at')

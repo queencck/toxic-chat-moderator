@@ -12,12 +12,12 @@ class User(AbstractUser):
 class Subscription(models.Model):
 
     PLAN_CHOICES = [
-        ('basic', 'Basic'),
-        ('premium', 'Premium'),
+        ('Basic', 'Basic'),
+        ('Premium', 'Premium'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
-    plan = models.CharField(max_length=100, choices=PLAN_CHOICES, default='basic')
+    plan = models.CharField(max_length=100, choices=PLAN_CHOICES, default='Basic')
     start_date = models.DateTimeField(auto_now_add=True, editable=False)
     expiry_date = models.DateTimeField(null=True, blank=True)
 
@@ -26,9 +26,16 @@ class Subscription(models.Model):
 
 class Bot(models.Model):
 
+    PLATFORM_CHOICES = [
+        ('API', 'API'),
+        ('Discord', 'Discord'),
+        ('Slack', 'Slack'),
+        ('Telegram', 'Telegram'),
+    ]
+
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bots', null=True, blank=True)
-    platform = models.CharField(max_length=50, editable=False)
+    platform = models.CharField(max_length=50, choices=PLATFORM_CHOICES, default='api')
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 

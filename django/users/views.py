@@ -5,7 +5,16 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Bot
-from .serializers import RegisterRequestSerializer, RegisterResponseSerializer, LoginRequestSerializer, LoginResponseSerializer, LinkBotRequestSerializer, LinkBotResponseSerializer
+from .serializers import (
+    LinkBotRequestSerializer,
+    LinkBotResponseSerializer,
+    ListBotResponseSerializer,
+    LoginRequestSerializer,
+    LoginResponseSerializer,
+    RegisterRequestSerializer,
+    RegisterResponseSerializer,
+)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -43,6 +52,16 @@ def login(request):
     return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_bots(request):
+    """List all bots linked to the authenticated user"""
+    bots = Bot.objects.filter(user=request.user)
+    response_serializer = ListBotResponseSerializer(bots, many=True)
+    return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+
+
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def link_bot(request):
@@ -52,7 +71,7 @@ def link_bot(request):
         return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        bot = Bot.objects.get(identifier=request_serializer.validated_data['bot_id'])
+        bot = Bot.objects.get(uuid=request_serializer.validated_data['bot_id'])
     except Bot.DoesNotExist:
         return Response({'error': 'Bot not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -61,7 +80,7 @@ def link_bot(request):
 
     response_serializer = LinkBotResponseSerializer({
         'message': 'Bot linked successfully',
-        'bot_id': bot.identifier,
+        'bot_id': bot.uuid,
         'user_id': request.user.uuid,
     })
     return Response(response_serializer.data, status=status.HTTP_200_OK)

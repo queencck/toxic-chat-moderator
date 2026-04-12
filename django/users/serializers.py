@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .models import User
 
@@ -51,6 +50,12 @@ class LoginResponseSerializer(serializers.Serializer):
     access = serializers.CharField()
     refresh = serializers.CharField()
     user = UserSerializer()
+
+class ListBotResponseSerializer(serializers.Serializer):
+    uuid = serializers.UUIDField()
+    platform = serializers.CharField()
+    is_active = serializers.BooleanField()
+    created_at = serializers.DateTimeField()
 
 
 class LinkBotRequestSerializer(serializers.Serializer):
