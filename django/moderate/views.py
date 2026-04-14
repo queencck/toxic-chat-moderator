@@ -3,20 +3,20 @@ from datetime import timedelta
 import httpx
 from django.conf import settings
 from django.utils import timezone
-from django.db.models import Q, Count
+from django.core.cache import cache
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import BotHourlyStat, TextChat
 from .serializers import (
-    BotActivityStatsRequestSerializer,
+    BotStatsRequestSerializer,
     BotActivityStatsRangeSerializer,
-    BotModerationStatsRequestSerializer,
     BotModerationStatsResponseSerializer,
-    ClassifyRequestSerializer,
-    ClassifyResponseSerializer,
+    MessageSerializer,
+    MessageRequestSerializer,
 )
 
 RANGE_DELTAS = {
@@ -37,9 +37,18 @@ def _get_stats_for_range(bot, now, delta):
     current_hour = since
 
     while current_hour <= now:
+        hour_end = current_hour + timedelta(hours=1)
+        # Count unique users who sent at least one message in this hour
+        active_users = TextChat.objects.filter(
+            bot=bot,
+            created_at__gte=current_hour,
+            created_at__lt=hour_end
+        ).values('sender').distinct().count()
+
         complete_stats.append({
             'hour': current_hour,
-            'chat_count': stats_map.get(current_hour, 0)
+            'chat_count': stats_map.get(current_hour, 0),
+            'active_users': active_users
         })
         current_hour += timedelta(hours=1)
 
@@ -50,13 +59,21 @@ def _get_stats_for_range(bot, now, delta):
 @permission_classes([IsAuthenticated])
 def get_bot_activity_stats(request):
     """Get statistics about the linked bot and their activity for all time ranges."""
-    serializer = BotActivityStatsRequestSerializer(
+    serializer = BotStatsRequestSerializer(
         data=request.query_params, context={'request': request},
     )
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    bot = serializer.validated_data['bot_id']
+    bot = serializer.validated_data['bot']
+    user = request.user
+
+    cache_key = f'bot_activity_stats:{bot.uuid}:{user.id}'
+
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return Response(cached_data, status=status.HTTP_200_OK)
+
     now = timezone.now().replace(minute=0, second=0, microsecond=0)
 
     # Query all three ranges at once
@@ -68,6 +85,7 @@ def get_bot_activity_stats(request):
 
     response_serializer = BotActivityStatsRangeSerializer(data=response_data)
     if response_serializer.is_valid():
+        cache.set(cache_key, response_serializer.data, 1800)
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     return Response(response_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -77,13 +95,22 @@ def get_bot_activity_stats(request):
 @permission_classes([IsAuthenticated])
 def get_bot_moderation_stats(request):
     """Get moderation statistics for the bot (3 hours, 24 hours, 1 week)."""
-    serializer = BotModerationStatsRequestSerializer(
+    serializer = BotStatsRequestSerializer(
         data=request.query_params, context={'request': request},
     )
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    bot = serializer.validated_data['bot_id']
+    bot = serializer.validated_data['bot']
+    user = request.user
+
+
+    cache_key = f'bot_moderation_stats:{bot.uuid}:{user.id}'
+
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return Response(cached_data, status=status.HTTP_200_OK)
+
     now = timezone.now()
     toxicity_threshold = 0.6
 
@@ -99,7 +126,7 @@ def get_bot_moderation_stats(request):
         since = now - delta
 
         chats = TextChat.objects.filter(
-            moderated_by=bot,
+            bot=bot,
             created_at__gte=since
         ).values('toxicity')
 
@@ -114,9 +141,8 @@ def get_bot_moderation_stats(request):
             'flagging_percentage': flagging_percentage,
         })
 
-    # Get top 5 most recent flagged messages
     flagged_chats_queryset = TextChat.objects.filter(
-        moderated_by=bot,
+        bot=bot,
         toxicity__gte=toxicity_threshold
     ).order_by('-created_at')[:5]
 
@@ -137,28 +163,31 @@ def get_bot_moderation_stats(request):
 
     response_serializer = BotModerationStatsResponseSerializer(data=response_data)
     if response_serializer.is_valid():
+        cache.set(cache_key, response_serializer.data, 60)
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     return Response(response_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
+@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-def classify(request):
-    """Send a chat message to the ML model server for toxicity classification."""
-    serializer = ClassifyRequestSerializer(data=request.data)
+def message(request):
+    """Classify a chat message for toxicity and persist the result to the database."""
+    serializer = MessageRequestSerializer(data=request.data, context={'request': request})
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     text = serializer.validated_data['text']
+    sender = serializer.validated_data['sender']
+
+    bot = serializer.validated_data['bot']
 
     try:
         response = httpx.post(
             f"http://{settings.ML_MODEL_SERVER_URL}/api/v1/classify",
             json={
                 "text": text,
-                "sender": serializer.validated_data.get("sender", ""),
-                "source": serializer.validated_data.get("source", ""),
             },
             timeout=10.0,
         )
@@ -180,13 +209,32 @@ def classify(request):
         )
 
     result = response.json()
-    response_serializer = ClassifyResponseSerializer(data={
-        "text": text,
-        "sender": serializer.validated_data.get("sender", ""),
-        "source": serializer.validated_data.get("source", ""),
-        **result,
-    })
-    if response_serializer.is_valid():
-        return Response(response_serializer.data, status=status.HTTP_200_OK)
 
-    return Response(response_serializer.errors, status=status.HTTP_502_BAD_GATEWAY)
+    chat = TextChat.objects.create(
+        bot=bot,
+        text=text,
+        toxicity=result.get("toxicity", 0.0),
+        sender=sender,
+        model_version=result.get("model_version", "unknown"),
+    )
+
+    # Update hourly statistics - floor to the hour
+    now = chat.created_at.replace(minute=0, second=0, microsecond=0)
+    hourly_stat, created = BotHourlyStat.objects.get_or_create(
+        bot=bot,
+        timestamp=now,
+        defaults={'chat_count': 0}
+    )
+    hourly_stat.chat_count += 1
+    hourly_stat.save()
+
+    response_serializer = MessageSerializer({
+        "bot": bot,
+        "text": chat.text,
+        "toxicity": chat.toxicity,
+        "sender": chat.sender,
+        "created_at": chat.created_at,
+        "model_version": chat.model_version,
+    })
+
+    return Response(response_serializer.data, status=status.HTTP_201_CREATED)

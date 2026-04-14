@@ -163,6 +163,22 @@ SIMPLE_JWT = {
 # ML Model Server
 ML_MODEL_SERVER_URL = os.getenv('ML_MODEL_SERVER_URL')
 
+# Cache Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {'max_connections': 100},
+            'SOCKET_CONNECT_TIMEOUT': 5,
+            'SOCKET_TIMEOUT': 5,
+            'KEY_PREFIX': 'toxic_moderator'
+        }
+    }
+}
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    
 ]

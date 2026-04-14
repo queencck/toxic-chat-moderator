@@ -34,11 +34,21 @@ class Bot(models.Model):
     ]
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bots', null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bots', null=True)
     platform = models.CharField(max_length=50, choices=PLATFORM_CHOICES, default='api')
-    is_active = models.BooleanField(default=False)
+    group_identifier = models.CharField(max_length=255, null=True, blank=True)
+    group_name = models.CharField(max_length=100, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['platform', 'group_identifier'], 
+                name='unique_platform_group_identifier'
+            )
+        ]
+
     def __str__(self):
-        return f"{self.platform} bot ({'active' if self.is_active else 'inactive'})"
+        return f"{self.uuid} ({self.platform} - {self.group_identifier})"
 

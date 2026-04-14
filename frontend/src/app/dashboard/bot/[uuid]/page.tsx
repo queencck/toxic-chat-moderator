@@ -65,6 +65,7 @@ export default function BotMonitorPage() {
   const [modStats, setModStats] = useState<ModerationStats | null>(null);
   const [modStatsLoading, setModStatsLoading] = useState(false);
   const [bot, setBot] = useState<Bot | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -92,41 +93,7 @@ export default function BotMonitorPage() {
     setModStatsLoading(true);
     getBotModerationStats(params.uuid)
       .then((data) => {
-        // Add mock data for demonstration if no flagged messages
-        if (data.flagged_messages.length === 0) {
-          data.flagged_messages = [
-            {
-              text: "I hate this so much, this is absolutely disgusting and unacceptable!",
-              toxicity: 0.92,
-              sender: "user_12345",
-              created_at: new Date(Date.now() - 2 * 60000).toISOString(),
-            },
-            // {
-            //   text: "You're all idiots, I can't believe how stupid everyone is here",
-            //   toxicity: 0.87,
-            //   sender: "angry_user",
-            //   created_at: new Date(Date.now() - 15 * 60000).toISOString(),
-            // },
-            // {
-            //   text: "This is completely toxic behavior and I'm reporting it immediately",
-            //   toxicity: 0.78,
-            //   sender: "moderator_bot",
-            //   created_at: new Date(Date.now() - 45 * 60000).toISOString(),
-            // },
-            // {
-            //   text: "Get out of here before I make you regret it",
-            //   toxicity: 0.85,
-            //   sender: "aggressive_user",
-            //   created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-            // },
-            // {
-            //   text: "This is the worst community ever, everyone here sucks",
-            //   toxicity: 0.81,
-            //   sender: "frustrated_user",
-            //   created_at: new Date(Date.now() - 4 * 3600000).toISOString(),
-            // },
-          ];
-        }
+        
         setModStats(data);
       })
       .catch((err) => {
@@ -139,6 +106,12 @@ export default function BotMonitorPage() {
   const handleLogout = () => {
     logout();
     router.push("/login");
+  };
+
+  const handleCopyUUID = () => {
+    navigator.clipboard.writeText(params.uuid);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const chartData = (allStats?.[`range_${range}` as keyof AllRangesActivityStats] || []).map((s) => ({
@@ -234,7 +207,24 @@ export default function BotMonitorPage() {
           <div className="mb-8 grid grid-cols-4 gap-4">
             <div className="rounded-xl border border-neutral-800 bg-neutral-950 px-5 py-4">
               <p className="text-xs text-neutral-500">UUID</p>
-              <p className="mt-1 truncate font-mono text-sm text-neutral-400">{params.uuid}</p>
+              <div className="mt-1 flex items-center gap-2">
+                <p className="truncate font-mono text-sm text-neutral-400">{params.uuid}</p>
+                <button
+                  onClick={handleCopyUUID}
+                  className="flex-shrink-0 rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300 transition-colors"
+                  title="Copy UUID"
+                >
+                  {copied ? (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             <div className="rounded-xl border border-neutral-800 bg-neutral-950 px-5 py-4">
               <p className="text-xs text-neutral-500">Platform</p>
@@ -277,7 +267,7 @@ export default function BotMonitorPage() {
 
           {/* Tab content */}
           {tab === "Activities" && (
-            <div>
+            <div className="space-y-6">
               {/* Range selector */}
               <div className="mb-6 flex items-center gap-2">
                 <span className="text-xs text-neutral-500">Range:</span>
@@ -296,7 +286,7 @@ export default function BotMonitorPage() {
                 ))}
               </div>
 
-              {/* Chart */}
+              {/* Chat Activity Chart */}
               <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-6">
                 <h2 className="mb-4 text-sm font-medium text-neutral-300">Chat Activity</h2>
                 {statsLoading ? (
@@ -352,6 +342,68 @@ export default function BotMonitorPage() {
                         stroke="#ffffff"
                         strokeWidth={1.5}
                         fill="url(#chatGrad)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              {/* Active Users Chart */}
+              <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-6">
+                <h2 className="mb-4 text-sm font-medium text-neutral-300">Active Users</h2>
+                {statsLoading ? (
+                  <div className="flex h-72 items-center justify-center">
+                    <p className="text-sm text-neutral-500">Loading stats...</p>
+                  </div>
+                ) : !allStats || chartData.length === 0 ? (
+                  <div className="flex h-72 items-center justify-center">
+                    <p className="text-sm text-neutral-500">No activity data available.</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                      <XAxis
+                        dataKey="ts"
+                        type="number"
+                        domain={["dataMin", "dataMax"]}
+                        ticks={buildTicks()}
+                        tickFormatter={(v) => formatTick(new Date(v).toISOString(), range)}
+                        tick={{ fill: "#737373", fontSize: 11 }}
+                        axisLine={{ stroke: "#262626" }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fill: "#737373", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={40}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#0a0a0a",
+                          border: "1px solid #262626",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
+                        labelStyle={{ color: "#a3a3a3" }}
+                        itemStyle={{ color: "#3b82f6" }}
+                        labelFormatter={formatTooltipLabel}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="active_users"
+                        name="Active Users"
+                        stroke="#3b82f6"
+                        strokeWidth={1.5}
+                        fill="url(#usersGrad)"
                       />
                     </AreaChart>
                   </ResponsiveContainer>

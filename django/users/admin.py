@@ -24,9 +24,9 @@ class SubscriptionAdmin(admin.ModelAdmin):
 
 @admin.register(Bot)
 class BotAdmin(admin.ModelAdmin):
-    list_display = ('id', 'uuid', 'user', 'platform', 'is_active', 'created_at')
+    list_display = ('id', 'uuid', 'user', 'platform', 'group_identifier', 'is_active', 'created_at')
     list_filter = ('platform', 'is_active', 'created_at')
-    search_fields = ('uuid', 'user')
+    search_fields = ('uuid', 'user__username', 'group_identifier')
     ordering = ('-created_at',)
-    readonly_fields = ('uuid', 'created_at')
-    fields = ('user', 'platform', 'is_active', 'uuid', 'created_at')
+    readonly_fields = ('uuid', 'platform', 'group_identifier', 'created_at')
+    fields = ('user', 'platform', 'group_identifier', 'is_active', 'uuid', 'created_at')

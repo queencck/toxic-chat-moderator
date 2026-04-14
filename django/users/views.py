@@ -1,11 +1,14 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.authentication import TokenAuthentication
 
 from .models import Bot
 from .serializers import (
+    CreateBotRequestSerializer,
+    CreateBotResponseSerializer,
     LinkBotRequestSerializer,
     LinkBotResponseSerializer,
     ListBotResponseSerializer,
@@ -84,3 +87,34 @@ def link_bot(request):
         'user_id': request.user.uuid,
     })
     return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def create_bot(request):
+    """Create a new bot instance (called by Discord bot on guild join)"""
+    request_serializer = CreateBotRequestSerializer(data=request.data)
+    if not request_serializer.is_valid():
+        return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    platform = request_serializer.validated_data['platform']
+    group_identifier = request_serializer.validated_data['group_identifier']
+    bot = Bot.objects.filter(platform=platform, group_identifier=group_identifier).first()
+    if bot:
+        response_serializer = CreateBotResponseSerializer({
+            'message': 'Existing bot found and returned successfully',
+            'bot_id': bot.uuid,
+        })
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+    
+    bot = Bot.objects.create(
+        platform=platform,
+        group_identifier=group_identifier
+    )
+
+    response_serializer = CreateBotResponseSerializer({
+        'message': 'Bot created successfully',
+        'bot_id': bot.uuid,
+    })
+    return Response(response_serializer.data, status=status.HTTP_201_CREATED)

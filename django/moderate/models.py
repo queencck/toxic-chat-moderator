@@ -12,7 +12,7 @@ class BotHourlyStat(models.Model):
 
 class TextChat(models.Model):
 
-    moderated_by = models.ForeignKey(Bot, on_delete=models.SET_NULL, null=True, blank=True)
+    bot = models.ForeignKey(Bot, on_delete=models.SET_NULL, null=True, blank=True)
     text = models.TextField()
     toxicity = models.FloatField()
     sender = models.CharField(max_length=128, blank=True)

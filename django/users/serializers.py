@@ -1,12 +1,19 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import User
+from .models import User, Bot
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name')
+        fields = ('uuid', 'username', 'email')
+
+class BotSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Bot
+        fields = ['uuid', 'user', 'platform', 'group_identifier', 'group_name', 'created_at']
 
 
 class RegisterRequestSerializer(serializers.ModelSerializer):
@@ -66,3 +73,19 @@ class LinkBotResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     bot_id = serializers.UUIDField()
     user_id = serializers.UUIDField()
+
+
+class CreateBotRequestSerializer(serializers.Serializer):
+    platform = serializers.CharField(max_length=50)
+    group_identifier = serializers.CharField(max_length=255)
+
+    def validate_platform(self, value):
+        valid_platforms = [choice[0] for choice in Bot.PLATFORM_CHOICES]
+        if value not in valid_platforms:
+            raise serializers.ValidationError(f'Platform must be one of {valid_platforms}')
+        return value
+
+
+class CreateBotResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    bot_id = serializers.UUIDField()

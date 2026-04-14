@@ -2,10 +2,8 @@ from fastapi import APIRouter, Depends, status
 
 from app.batcher import InferenceBatcher
 from app.classifier import ToxicityClassifier
-from app.config import settings
 from app.dependencies import get_batcher, get_classifier
 from app.schemas import ClassificationRequest, ClassificationResult
-from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
