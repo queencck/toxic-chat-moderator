@@ -61,6 +61,7 @@ class LoginResponseSerializer(serializers.Serializer):
 class ListBotResponseSerializer(serializers.Serializer):
     uuid = serializers.UUIDField()
     platform = serializers.CharField()
+    group_name = serializers.CharField()
     is_active = serializers.BooleanField()
     created_at = serializers.DateTimeField()
 
@@ -78,6 +79,7 @@ class LinkBotResponseSerializer(serializers.Serializer):
 class CreateBotRequestSerializer(serializers.Serializer):
     platform = serializers.CharField(max_length=50)
     group_identifier = serializers.CharField(max_length=255)
+    group_name = serializers.CharField(max_length=100)
 
     def validate_platform(self, value):
         valid_platforms = [choice[0] for choice in Bot.PLATFORM_CHOICES]

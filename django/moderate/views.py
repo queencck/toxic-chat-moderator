@@ -13,17 +13,15 @@ from rest_framework.response import Response
 from .models import BotHourlyStat, TextChat
 from .serializers import (
     BotStatsRequestSerializer,
-    BotActivityStatsRangeSerializer,
+    BotActivityStatsResponseSerializer,
     BotModerationStatsResponseSerializer,
+    AuditLogEntrySerializer,
+    AuditLogResponseSerializer,
     MessageSerializer,
     MessageRequestSerializer,
 )
 
-RANGE_DELTAS = {
-    '48h': timedelta(hours=48),
-    '7d': timedelta(days=7),
-    '30d': timedelta(days=30),
-}
+LARGEST_RANGE_DELTA = timedelta(days=30)
 
 
 def _get_stats_for_range(bot, now, delta):
@@ -58,7 +56,7 @@ def _get_stats_for_range(bot, now, delta):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_bot_activity_stats(request):
-    """Get statistics about the linked bot and their activity for all time ranges."""
+    """Get hourly activity stats for the last 30 days. Frontend filters by range."""
     serializer = BotStatsRequestSerializer(
         data=request.query_params, context={'request': request},
     )
@@ -75,17 +73,11 @@ def get_bot_activity_stats(request):
         return Response(cached_data, status=status.HTTP_200_OK)
 
     now = timezone.now().replace(minute=0, second=0, microsecond=0)
+    stats = _get_stats_for_range(bot, now, LARGEST_RANGE_DELTA)
 
-    # Query all three ranges at once
-    response_data = {
-        'range_48h': _get_stats_for_range(bot, now, RANGE_DELTAS['48h']),
-        'range_7d': _get_stats_for_range(bot, now, RANGE_DELTAS['7d']),
-        'range_30d': _get_stats_for_range(bot, now, RANGE_DELTAS['30d']),
-    }
-
-    response_serializer = BotActivityStatsRangeSerializer(data=response_data)
+    response_serializer = BotActivityStatsResponseSerializer(data=stats, many=True)
     if response_serializer.is_valid():
-        cache.set(cache_key, response_serializer.data, 1800)
+        cache.set(cache_key, response_serializer.data, 60)
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     return Response(response_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -162,6 +154,79 @@ def get_bot_moderation_stats(request):
     }
 
     response_serializer = BotModerationStatsResponseSerializer(data=response_data)
+    if response_serializer.is_valid():
+        cache.set(cache_key, response_serializer.data, 60)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+    return Response(response_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_audit_log(request):
+    """Get paginated chat messages for a bot from the last 7 days with filtering. Cached in Redis for 60s."""
+    serializer = BotStatsRequestSerializer(
+        data=request.query_params, context={'request': request},
+    )
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    bot = serializer.validated_data['bot']
+    user = request.user
+
+    # Read query params
+    page = int(request.query_params.get('page', 1))
+    page_size = int(request.query_params.get('page_size', 20))
+    search = request.query_params.get('search', '').strip()
+    sender = request.query_params.get('sender', '').strip()
+    flagged = request.query_params.get('flagged', '').lower() == 'true'
+
+    cache_key = f'bot_audit_log:{bot.uuid}:{user.id}:p{page}:ps{page_size}:s{search}:sn{sender}:f{flagged}'
+
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return Response(cached_data, status=status.HTTP_200_OK)
+
+    now = timezone.now()
+    since = now - timedelta(days=7)
+
+    messages = TextChat.objects.filter(
+        bot=bot, created_at__gte=since
+    ).order_by('-created_at')
+
+    if search:
+        messages = messages.filter(text__icontains=search)
+    if sender:
+        messages = messages.filter(sender__icontains=sender)
+    if flagged:
+        messages = messages.filter(toxicity__gte=0.6)
+
+    total = messages.count()
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    page = min(page, total_pages)
+    offset = (page - 1) * page_size
+
+    page_results = [
+        {
+            'id': chat.id,
+            'text': chat.text,
+            'toxicity': chat.toxicity,
+            'sender': chat.sender,
+            'created_at': chat.created_at,
+            'model_version': chat.model_version,
+        }
+        for chat in messages[offset:offset + page_size]
+    ]
+
+    response_data = {
+        'results': page_results,
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': total_pages,
+    }
+
+    response_serializer = AuditLogResponseSerializer(data=response_data)
     if response_serializer.is_valid():
         cache.set(cache_key, response_serializer.data, 60)
         return Response(response_serializer.data, status=status.HTTP_200_OK)

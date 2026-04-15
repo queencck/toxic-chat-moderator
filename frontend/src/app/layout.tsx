@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Toxic Chat Moderator",
+  title: "MoonBot",
   description: "Real-time content moderation dashboard",
 };
 
@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="min-h-screen bg-black text-white antialiased">
+      <body className="min-h-screen bg-surface text-text-primary antialiased">
         {children}
       </body>
     </html>

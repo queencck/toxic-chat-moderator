@@ -42,12 +42,6 @@ class BotActivityStatsResponseSerializer(serializers.Serializer):
     hour = serializers.DateTimeField()
 
 
-class BotActivityStatsRangeSerializer(serializers.Serializer):
-    range_48h = BotActivityStatsResponseSerializer(many=True)
-    range_7d = BotActivityStatsResponseSerializer(many=True)
-    range_30d = BotActivityStatsResponseSerializer(many=True)
-
-
 class MessageSerializer(serializers.Serializer):
     bot = BotSerializer(read_only=True)
     text = serializers.CharField(max_length=5000)
@@ -74,3 +68,20 @@ class FlaggedMessageSerializer(serializers.Serializer):
 class BotModerationStatsResponseSerializer(serializers.Serializer):
     stats_by_period = PeriodStatsSerializer(many=True)
     flagged_messages = FlaggedMessageSerializer(many=True)
+
+
+class AuditLogEntrySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    text = serializers.CharField(max_length=5000)
+    toxicity = serializers.FloatField()
+    sender = serializers.CharField(max_length=128, allow_blank=True)
+    created_at = serializers.DateTimeField()
+    model_version = serializers.CharField(max_length=64, allow_blank=True)
+
+
+class AuditLogResponseSerializer(serializers.Serializer):
+    results = AuditLogEntrySerializer(many=True)
+    total = serializers.IntegerField()
+    page = serializers.IntegerField()
+    page_size = serializers.IntegerField()
+    total_pages = serializers.IntegerField()

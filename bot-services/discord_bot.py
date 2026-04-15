@@ -40,12 +40,13 @@ async def get_http_client():
     return http_client
 
 
-async def create_bot_on_django(guild_id):
+async def create_bot_on_django(guild_id, guild_name):
     """
     Request the Django server to create a new bot record.
 
     Args:
         guild_id: The Discord guild ID to use as group_identifier.
+        guild_name: The Discord guild name to use as group_name.
 
     Returns:
         str: The bot UUID if successful, None otherwise.
@@ -54,7 +55,7 @@ async def create_bot_on_django(guild_id):
         client = await get_http_client()
         response = await client.post(
             f'{DJANGO_API_URL}{BOT_CREATE_ENDPOINT}',
-            json={'platform': BOT_PLATFORM_DISCORD, 'group_identifier': str(guild_id)},
+            json={'platform': BOT_PLATFORM_DISCORD, 'group_identifier': str(guild_id), 'group_name': guild_name},
             headers={'Host': DJANGO_API_HOST, 'Authorization': f'Token {SECRET_TOKEN}'},
             timeout=None,
         )
@@ -178,7 +179,7 @@ async def on_guild_join(guild):
     Event triggered when the bot is added to a server (guild).
     Creates a new bot record in the Django server and sends setup instructions.
     """
-    bot_uuid = await create_bot_on_django(guild.id)
+    bot_uuid = await create_bot_on_django(guild.id, guild.name)
     if not bot_uuid:
         print(f'Failed to create bot for guild {guild.name}')
         return
@@ -283,7 +284,7 @@ async def setup_command(ctx):
     Usage: !setup
     """
     async with ctx.typing():
-        bot_uuid = await create_bot_on_django(ctx.guild.id)
+        bot_uuid = await create_bot_on_django(ctx.guild.id, ctx.guild.name)
 
     if bot_uuid:
         await send_setup_message(ctx.channel, bot_uuid)

@@ -34,10 +34,10 @@ class Bot(models.Model):
     ]
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bots', null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bots', blank=True, null=True)
     platform = models.CharField(max_length=50, choices=PLATFORM_CHOICES, default='api')
-    group_identifier = models.CharField(max_length=255, null=True, blank=True)
-    group_name = models.CharField(max_length=100, null=True, blank=True)
+    group_identifier = models.CharField(max_length=255)
+    group_name = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 

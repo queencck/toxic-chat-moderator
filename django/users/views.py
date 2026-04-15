@@ -100,6 +100,7 @@ def create_bot(request):
 
     platform = request_serializer.validated_data['platform']
     group_identifier = request_serializer.validated_data['group_identifier']
+    group_name = request_serializer.validated_data['group_name']
     bot = Bot.objects.filter(platform=platform, group_identifier=group_identifier).first()
     if bot:
         response_serializer = CreateBotResponseSerializer({
@@ -110,7 +111,8 @@ def create_bot(request):
     
     bot = Bot.objects.create(
         platform=platform,
-        group_identifier=group_identifier
+        group_identifier=group_identifier,
+        group_name=group_name
     )
 
     response_serializer = CreateBotResponseSerializer({

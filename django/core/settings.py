@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-9mx8d53qyi8a6gk3+a%ph+kku9dp7nd#o_5q7s_qy^fgr33yaz
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', 'api.localhost', 'admin.localhost', '127.0.0.1']
 
 
 # Application definition
@@ -69,6 +69,7 @@ ROOT_URLCONF = 'core.urls'
 
 ROOT_HOSTCONF = 'core.hosts'
 DEFAULT_HOST = 'www'
+PARENT_HOST = 'localhost:8000'
 
 TEMPLATES = [
     {
@@ -180,5 +181,5 @@ CACHES = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    
+    "http://localhost:3001",
 ]

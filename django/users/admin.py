@@ -8,11 +8,8 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ('uuid', 'username', 'email', 'first_name', 'last_name')
     ordering = ('-date_joined',)
     readonly_fields = ('uuid', 'date_joined', 'last_login')
-    fieldsets = (
-        ('User Info', {'fields': ('uuid', 'username', 'email', 'first_name', 'last_name')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        ('Important Dates', {'fields': ('last_login', 'date_joined')}),
-    )
+    fields = ('uuid', 'username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'is_superuser', 'last_login', 'date_joined')
+
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
@@ -22,11 +19,12 @@ class SubscriptionAdmin(admin.ModelAdmin):
     ordering = ('-start_date',)
     readonly_fields = ('start_date',)
 
+
 @admin.register(Bot)
 class BotAdmin(admin.ModelAdmin):
     list_display = ('id', 'uuid', 'user', 'platform', 'group_identifier', 'is_active', 'created_at')
     list_filter = ('platform', 'is_active', 'created_at')
-    search_fields = ('uuid', 'user__username', 'group_identifier')
+    search_fields = ('uuid', 'user__username', 'group_identifier', 'group_name')
     ordering = ('-created_at',)
-    readonly_fields = ('uuid', 'platform', 'group_identifier', 'created_at')
-    fields = ('user', 'platform', 'group_identifier', 'is_active', 'uuid', 'created_at')
+    readonly_fields = ('uuid', 'platform', 'group_identifier', 'group_name', 'created_at')
+    fields = ('uuid', 'user', 'platform', 'group_identifier', 'group_name', 'is_active', 'created_at')
