@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { logout, getUser, type User } from "@/lib/api";
+import { logout, getUser, listBots, type User } from "@/lib/api";
 
 function getLastBotUuid(): string | null {
   if (typeof window === "undefined") return null;
@@ -21,7 +21,19 @@ export function Sidebar() {
 
   useEffect(() => {
     setUser(getUser());
-    setLastBotUuid(getLastBotUuid());
+    const stored = getLastBotUuid();
+    if (stored) {
+      setLastBotUuid(stored);
+    } else {
+      listBots()
+        .then((bots) => {
+          if (bots.length > 0) {
+            localStorage.setItem("lastBotUuid", bots[0].uuid);
+            setLastBotUuid(bots[0].uuid);
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   // Keep lastBotUuid in sync when the route changes to a bot page
