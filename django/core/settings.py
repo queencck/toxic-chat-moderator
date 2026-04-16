@@ -69,7 +69,7 @@ ROOT_URLCONF = 'core.urls'
 
 ROOT_HOSTCONF = 'core.hosts'
 DEFAULT_HOST = 'www'
-PARENT_HOST = 'localhost:8000'
+PARENT_HOST = 'localhost'
 
 TEMPLATES = [
     {

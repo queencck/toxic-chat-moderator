@@ -7,15 +7,14 @@ from rest_framework.authentication import TokenAuthentication
 
 from .models import Bot
 from .serializers import (
+    BotSerializer,
+    BotActionResponseSerializer,
     CreateBotRequestSerializer,
-    CreateBotResponseSerializer,
     LinkBotRequestSerializer,
-    LinkBotResponseSerializer,
-    ListBotResponseSerializer,
     LoginRequestSerializer,
     LoginResponseSerializer,
     RegisterRequestSerializer,
-    RegisterResponseSerializer,
+    UserSerializer,
 )
 
 
@@ -27,11 +26,10 @@ def register(request):
     if request_serializer.is_valid():
         user = request_serializer.save()
 
-        response_serializer = RegisterResponseSerializer({
+        return Response({
             'message': 'User registered successfully',
-            'user': user
-        })
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+            'user': UserSerializer(user).data,
+        }, status=status.HTTP_201_CREATED)
         
     return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -60,7 +58,7 @@ def login(request):
 def list_bots(request):
     """List all bots linked to the authenticated user"""
     bots = Bot.objects.filter(user=request.user)
-    response_serializer = ListBotResponseSerializer(bots, many=True)
+    response_serializer = BotSerializer(bots, many=True)
     return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 
@@ -81,7 +79,7 @@ def link_bot(request):
     bot.user = request.user
     bot.save(update_fields=['user'])
 
-    response_serializer = LinkBotResponseSerializer({
+    response_serializer = BotActionResponseSerializer({
         'message': 'Bot linked successfully',
         'bot_id': bot.uuid,
         'user_id': request.user.uuid,
@@ -103,19 +101,19 @@ def create_bot(request):
     group_name = request_serializer.validated_data['group_name']
     bot = Bot.objects.filter(platform=platform, group_identifier=group_identifier).first()
     if bot:
-        response_serializer = CreateBotResponseSerializer({
+        response_serializer = BotActionResponseSerializer({
             'message': 'Existing bot found and returned successfully',
             'bot_id': bot.uuid,
         })
         return Response(response_serializer.data, status=status.HTTP_200_OK)
-    
+
     bot = Bot.objects.create(
         platform=platform,
         group_identifier=group_identifier,
         group_name=group_name
     )
 
-    response_serializer = CreateBotResponseSerializer({
+    response_serializer = BotActionResponseSerializer({
         'message': 'Bot created successfully',
         'bot_id': bot.uuid,
     })

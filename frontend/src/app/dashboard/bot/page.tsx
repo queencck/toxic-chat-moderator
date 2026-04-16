@@ -219,8 +219,8 @@ function BotMonitorContent() {
             <span className="min-w-0 flex-1 truncate text-left">
               {currentBot?.group_name ?? currentBot?.platform ?? uuid.slice(0, 8) + "..."}
             </span>
-            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path fillRule="evenodd" d="M12.53 16.28a.75.75 0 01-1.06 0l-7.5-7.5a.75.75 0 011.06-1.06L12 14.69l6.97-6.97a.75.75 0 111.06 1.06l-7.5 7.5z" clipRule="evenodd" />
             </svg>
           </button>
 
@@ -249,8 +249,8 @@ function BotMonitorContent() {
                     </p>
                   </div>
                   {bot.uuid === uuid && (
-                    <svg className="h-4 w-4 shrink-0 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    <svg className="h-4 w-4 shrink-0 text-accent" viewBox="0 0 24 24" fill="currentColor">
+                      <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
                     </svg>
                   )}
                 </button>
@@ -297,8 +297,8 @@ function BotMonitorContent() {
                 <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="chatGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#ffffff" stopOpacity={0.15} />
-                      <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#f97316" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#f97316" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2025" />
@@ -327,14 +327,14 @@ function BotMonitorContent() {
                       fontSize: "12px",
                     }}
                     labelStyle={{ color: "#9ca3af" }}
-                    itemStyle={{ color: "#ffffff" }}
+                    itemStyle={{ color: "#f97316" }}
                     labelFormatter={formatTooltipLabel}
                   />
                   <Area
                     type="monotone"
                     dataKey="chat_count"
                     name="Chats"
-                    stroke="#ffffff"
+                    stroke="#f97316"
                     strokeWidth={1.5}
                     fill="url(#chatGrad)"
                   />
@@ -359,8 +359,8 @@ function BotMonitorContent() {
                 <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#4a6cf7" stopOpacity={0.15} />
-                      <stop offset="100%" stopColor="#4a6cf7" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#06b6d4" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2025" />
@@ -389,14 +389,14 @@ function BotMonitorContent() {
                       fontSize: "12px",
                     }}
                     labelStyle={{ color: "#9ca3af" }}
-                    itemStyle={{ color: "#4a6cf7" }}
+                    itemStyle={{ color: "#06b6d4" }}
                     labelFormatter={formatTooltipLabel}
                   />
                   <Area
                     type="monotone"
                     dataKey="active_users"
                     name="Active Users"
-                    stroke="#4a6cf7"
+                    stroke="#06b6d4"
                     strokeWidth={1.5}
                     fill="url(#usersGrad)"
                   />
@@ -451,11 +451,11 @@ function BotMonitorContent() {
                       <div className="pt-2">
                         <div className="mb-2 flex items-center justify-between text-xs text-text-muted">
                           <span>Flagging Rate</span>
-                          <span className="font-mono font-medium">{stat.flagging_percentage.toFixed(1)}%</span>
+                          <span className="font-mono font-medium text-red-400">{stat.flagging_percentage.toFixed(1)}%</span>
                         </div>
                         <div className="relative h-2 overflow-hidden rounded-full bg-white/5">
                           <div
-                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-600 to-red-400"
+                            className="absolute inset-y-0 left-0 bg-red-400"
                             style={{
                               width: `${Math.min(stat.flagging_percentage, 100)}%`,
                             }}
@@ -542,7 +542,14 @@ function BotMonitorContent() {
             </div>
             <button
               type="button"
-              onClick={() => setAuditFlagged(!auditFlagged)}
+              onClick={() => {
+                const next = !auditFlagged;
+                setAuditFlagged(next);
+                setAuditPage(1);
+                setAppliedSearch(auditSearch);
+                setAppliedSender(auditSender);
+                setAppliedFlagged(next);
+              }}
               className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
                 auditFlagged
                   ? "border-red-500/40 bg-red-500/10 text-red-400"
@@ -643,9 +650,8 @@ function BotMonitorContent() {
         <div className="space-y-6">
           <div className="flex h-72 items-center justify-center rounded-md border border-border-subtle bg-surface-card">
             <div className="text-center">
-              <svg className="mx-auto h-10 w-10 text-text-muted/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.248a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <svg className="mx-auto h-10 w-10 text-text-muted/40" viewBox="0 0 24 24" fill="currentColor">
+                <path fillRule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 00-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 00-2.282.819l-.922 1.597a1.875 1.875 0 00.432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 000 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 00-.432 2.385l.922 1.597a1.875 1.875 0 002.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 002.28-.819l.923-1.597a1.875 1.875 0 00-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 000-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 00-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 00-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 00-1.85-1.567h-1.843zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" clipRule="evenodd" />
               </svg>
               <p className="mt-3 text-sm font-medium text-text-muted">Bot Configuration</p>
               <p className="mt-1 text-xs text-text-muted/60">Manage bot settings, thresholds, and integrations here.</p>

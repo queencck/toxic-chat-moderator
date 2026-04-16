@@ -13,7 +13,7 @@ class BotSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bot
-        fields = ['uuid', 'user', 'platform', 'group_identifier', 'group_name', 'created_at']
+        fields = ['uuid', 'user', 'platform', 'group_identifier', 'group_name', 'is_active', 'created_at']
 
 
 class RegisterRequestSerializer(serializers.ModelSerializer):
@@ -36,11 +36,6 @@ class RegisterRequestSerializer(serializers.ModelSerializer):
         return user
 
 
-class RegisterResponseSerializer(serializers.Serializer):
-    message = serializers.CharField()
-    user = UserSerializer()
-
-
 class LoginRequestSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
@@ -58,23 +53,6 @@ class LoginResponseSerializer(serializers.Serializer):
     refresh = serializers.CharField()
     user = UserSerializer()
 
-class ListBotResponseSerializer(serializers.Serializer):
-    uuid = serializers.UUIDField()
-    platform = serializers.CharField()
-    group_name = serializers.CharField()
-    is_active = serializers.BooleanField()
-    created_at = serializers.DateTimeField()
-
-
-class LinkBotRequestSerializer(serializers.Serializer):
-    bot_id = serializers.UUIDField(required=True)
-
-
-class LinkBotResponseSerializer(serializers.Serializer):
-    message = serializers.CharField()
-    bot_id = serializers.UUIDField()
-    user_id = serializers.UUIDField()
-
 
 class CreateBotRequestSerializer(serializers.Serializer):
     platform = serializers.CharField(max_length=50)
@@ -87,7 +65,11 @@ class CreateBotRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError(f'Platform must be one of {valid_platforms}')
         return value
 
+class LinkBotRequestSerializer(serializers.Serializer):
+    bot_id = serializers.UUIDField(required=True)
 
-class CreateBotResponseSerializer(serializers.Serializer):
+
+class BotActionResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     bot_id = serializers.UUIDField()
+    user_id = serializers.UUIDField(required=False)

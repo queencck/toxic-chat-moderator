@@ -3,6 +3,16 @@ from users.serializers import BotSerializer
 from users.models import Bot
 
 
+class TextChatSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=False)
+    bot = BotSerializer(read_only=True, required=False)
+    text = serializers.CharField(max_length=5000)
+    toxicity = serializers.FloatField()
+    sender = serializers.CharField(max_length=128, allow_blank=True)
+    created_at = serializers.DateTimeField(required=False)
+    model_version = serializers.CharField(max_length=64, allow_blank=True, required=False)
+
+
 class MessageRequestSerializer(serializers.Serializer):
     text = serializers.CharField(max_length=5000)
     sender = serializers.CharField(max_length=128)
@@ -42,15 +52,6 @@ class BotActivityStatsResponseSerializer(serializers.Serializer):
     hour = serializers.DateTimeField()
 
 
-class MessageSerializer(serializers.Serializer):
-    bot = BotSerializer(read_only=True)
-    text = serializers.CharField(max_length=5000)
-    toxicity = serializers.FloatField()
-    sender = serializers.CharField(max_length=128, allow_blank=True)
-    created_at = serializers.DateTimeField(required=False)
-    model_version = serializers.CharField(max_length=64, required=False)
-
-
 class PeriodStatsSerializer(serializers.Serializer):
     period = serializers.CharField()
     total_chats = serializers.IntegerField()
@@ -58,29 +59,13 @@ class PeriodStatsSerializer(serializers.Serializer):
     flagging_percentage = serializers.FloatField()
 
 
-class FlaggedMessageSerializer(serializers.Serializer):
-    text = serializers.CharField(max_length=5000)
-    toxicity = serializers.FloatField()
-    sender = serializers.CharField(max_length=128, allow_blank=True)
-    created_at = serializers.DateTimeField()
-
-
 class BotModerationStatsResponseSerializer(serializers.Serializer):
     stats_by_period = PeriodStatsSerializer(many=True)
-    flagged_messages = FlaggedMessageSerializer(many=True)
-
-
-class AuditLogEntrySerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    text = serializers.CharField(max_length=5000)
-    toxicity = serializers.FloatField()
-    sender = serializers.CharField(max_length=128, allow_blank=True)
-    created_at = serializers.DateTimeField()
-    model_version = serializers.CharField(max_length=64, allow_blank=True)
+    flagged_messages = TextChatSerializer(many=True)
 
 
 class AuditLogResponseSerializer(serializers.Serializer):
-    results = AuditLogEntrySerializer(many=True)
+    results = TextChatSerializer(many=True)
     total = serializers.IntegerField()
     page = serializers.IntegerField()
     page_size = serializers.IntegerField()

@@ -15,9 +15,8 @@ from .serializers import (
     BotStatsRequestSerializer,
     BotActivityStatsResponseSerializer,
     BotModerationStatsResponseSerializer,
-    AuditLogEntrySerializer,
     AuditLogResponseSerializer,
-    MessageSerializer,
+    TextChatSerializer,
     MessageRequestSerializer,
 )
 
@@ -293,7 +292,7 @@ def message(request):
     hourly_stat.chat_count += 1
     hourly_stat.save()
 
-    response_serializer = MessageSerializer({
+    response_serializer = TextChatSerializer({
         "bot": bot,
         "text": chat.text,
         "toxicity": chat.toxicity,
