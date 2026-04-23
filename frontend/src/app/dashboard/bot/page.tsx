@@ -3,14 +3,12 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  getBotActivityStats,
   getBotAuditLog,
-  getBotModerationStats,
+  getBotStats,
   listBots,
   type AuditLogEntry,
   type Bot,
-  type HourlyStat,
-  type ModerationStats,
+  type BotStats,
   type StatsRange,
 } from "@/lib/api";
 import {
@@ -23,7 +21,7 @@ import {
   Tooltip,
 } from "recharts";
 
-type Tab = "activities" | "moderations" | "audit-log" | "configuration";
+type Tab = "activities" | "audit-log" | "configuration";
 
 const RANGES: { label: string; value: StatsRange }[] = [
   { label: "48h", value: "48h" },
@@ -57,10 +55,8 @@ function BotMonitorContent() {
   const tab: Tab = (searchParams.get("tab") as Tab) || "activities";
 
   const [range, setRange] = useState<StatsRange>("48h");
-  const [allStats, setAllStats] = useState<HourlyStat[] | null>(null);
+  const [stats, setStats] = useState<BotStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [modStats, setModStats] = useState<ModerationStats | null>(null);
-  const [modStatsLoading, setModStatsLoading] = useState(false);
   const [bots, setBots] = useState<Bot[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -107,24 +103,11 @@ function BotMonitorContent() {
     if (!uuid) return;
     if (tab !== "activities") return;
     setStatsLoading(true);
-    getBotActivityStats(uuid)
-      .then(setAllStats)
-      .catch(() => setAllStats(null))
+    getBotStats(uuid)
+      .then(setStats)
+      .catch(() => setStats(null))
       .finally(() => setStatsLoading(false));
   }, [uuid, tab]);
-
-  useEffect(() => {
-    if (tab !== "moderations" || !uuid) return;
-    setModStatsLoading(true);
-    getBotModerationStats(uuid)
-      .then((data) => {
-        setModStats(data);
-      })
-      .catch(() => {
-        setModStats(null);
-      })
-      .finally(() => setModStatsLoading(false));
-  }, [tab, uuid]);
 
   useEffect(() => {
     if (tab !== "audit-log" || !uuid) return;
@@ -163,9 +146,9 @@ function BotMonitorContent() {
   const RANGE_MS: Record<StatsRange, number> = { "48h": 48 * 3600_000, "7d": 7 * 86400_000, "30d": 30 * 86400_000 };
 
   const chartData = (() => {
-    if (!allStats) return [];
+    if (!stats) return [];
     const cutoff = Date.now() - RANGE_MS[range];
-    return allStats
+    return stats.hourly_records
       .filter((s) => new Date(s.hour).getTime() >= cutoff)
       .map((s) => ({ ...s, ts: new Date(s.hour).getTime() }));
   })();
@@ -187,14 +170,12 @@ function BotMonitorContent() {
 
   const tabLabels: Record<Tab, string> = {
     activities: "Activities",
-    moderations: "Moderations",
     "audit-log": "Audit Logs",
     configuration: "Configuration",
   };
 
   const tabDescriptions: Record<Tab, string> = {
-    activities: "Monitor chat volume and active users over time.",
-    moderations: "Review flagged messages and moderation statistics.",
+    activities: "Monitor chat volume, active users, and recent moderation activity.",
     "audit-log": "Browse all messages processed in the last 7 days.",
     configuration: "Manage bot settings, thresholds, and integrations.",
   };
@@ -288,7 +269,7 @@ function BotMonitorContent() {
               <div className="flex h-72 items-center justify-center">
                 <p className="text-sm text-text-muted">Loading stats...</p>
               </div>
-            ) : !allStats || chartData.length === 0 ? (
+            ) : !stats || chartData.length === 0 ? (
               <div className="flex h-72 items-center justify-center">
                 <p className="text-sm text-text-muted">No activity data available.</p>
               </div>
@@ -350,7 +331,7 @@ function BotMonitorContent() {
               <div className="flex h-72 items-center justify-center">
                 <p className="text-sm text-text-muted">Loading stats...</p>
               </div>
-            ) : !allStats || chartData.length === 0 ? (
+            ) : !stats || chartData.length === 0 ? (
               <div className="flex h-72 items-center justify-center">
                 <p className="text-sm text-text-muted">No activity data available.</p>
               </div>
@@ -404,113 +385,66 @@ function BotMonitorContent() {
               </ResponsiveContainer>
             )}
           </div>
-        </div>
-      )}
 
-      {tab === "moderations" && (
-        <div>
-          {modStatsLoading ? (
-            <div className="flex h-72 items-center justify-center rounded-md border border-border-subtle bg-surface-card">
-              <p className="text-sm text-text-muted">Loading moderation stats...</p>
+          {/* Moderation — Last 12 Hours */}
+          <div className="rounded-md border border-border-subtle bg-surface-card p-6">
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="text-sm font-medium text-text-muted">Flagged Messages</h2>
+              <span className="text-xs text-text-muted">Last 12 hours</span>
             </div>
-          ) : !modStats || modStats.stats_by_period.length === 0 ? (
-            <div className="flex h-72 items-center justify-center rounded-md border border-border-subtle bg-surface-card">
-              <p className="text-sm text-text-muted">No moderation data available.</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                {modStats.stats_by_period.map((stat) => (
-                  <div
-                    key={stat.period}
-                    className="rounded-md border border-border-subtle bg-surface-card p-6"
-                  >
-                    <div className="mb-4">
-                      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-                        Last {stat.period}
-                      </p>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-xs text-text-muted">Total Chats</p>
-                        <p className="mt-1 text-3xl font-bold">{stat.total_chats}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-text-muted">Flagged Chats</p>
-                        <div className="mt-1 flex items-baseline gap-2">
-                          <p className="text-2xl font-bold text-red-400">{stat.flagged_chats}</p>
-                          <p className="text-sm text-text-muted">
-                            ({stat.flagging_percentage.toFixed(1)}%)
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="pt-2">
-                        <div className="mb-2 flex items-center justify-between text-xs text-text-muted">
-                          <span>Flagging Rate</span>
-                          <span className="font-mono font-medium text-red-400">{stat.flagging_percentage.toFixed(1)}%</span>
-                        </div>
-                        <div className="relative h-2 overflow-hidden rounded-full bg-white/5">
-                          <div
-                            className="absolute inset-y-0 left-0 bg-red-400"
-                            style={{
-                              width: `${Math.min(stat.flagging_percentage, 100)}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            {statsLoading ? (
+              <div className="flex min-h-40 items-center justify-center">
+                <p className="text-sm text-text-muted">Loading...</p>
               </div>
-
-              {/* Flagged Messages */}
-              {modStats && (
-                <div className="rounded-md border border-border-subtle bg-surface-card p-6">
-                  <h2 className="mb-4 text-sm font-medium text-text-muted">Recent Flagged Messages</h2>
-                  {(modStats.flagged_messages?.length ?? 0) === 0 ? (
-                    <div className="flex min-h-40 items-center justify-center rounded-md border border-border-subtle bg-white/5">
-                      <p className="text-sm text-text-muted">No flagged messages</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {modStats.flagged_messages!.map((message, idx) => (
-                        <div key={idx} className="flex gap-4 rounded-md border border-border-subtle bg-white/5 p-4">
-                          <div className="flex-shrink-0">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-red-700/50 bg-red-900/30">
-                              <span className="text-sm font-semibold text-red-400">
-                                {(message.toxicity * 100).toFixed(0)}%
-                              </span>
-                            </div>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="break-words text-sm text-neutral-200">{message.text}</p>
-                            <div className="mt-2 flex items-center gap-3 text-xs text-text-muted">
-                              {message.sender && (
-                                <>
-                                  <span>Sender: {message.sender}</span>
-                                  <span>•</span>
-                                </>
-                              )}
-                              <span>Time: {new Date(message.created_at).toLocaleString([], {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}</span>
-                            </div>
+            ) : !stats ? (
+              <div className="flex min-h-40 items-center justify-center">
+                <p className="text-sm text-text-muted">No moderation data available.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs text-text-muted">Flagged Count</p>
+                  <p className="mt-1 text-3xl font-bold text-red-400">{stats.flagged_count}</p>
+                </div>
+                {stats.flagged_messages.length === 0 ? (
+                  <div className="flex min-h-32 items-center justify-center rounded-md border border-border-subtle bg-white/5">
+                    <p className="text-sm text-text-muted">No flagged messages in the last 12 hours</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {stats.flagged_messages.map((message, idx) => (
+                      <div key={idx} className="flex gap-4 rounded-md border border-border-subtle bg-white/5 p-4">
+                        <div className="flex-shrink-0">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-md border border-red-700/50 bg-red-900/30">
+                            <span className="text-sm font-semibold text-red-400">
+                              {(message.toxicity * 100).toFixed(0)}%
+                            </span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                        <div className="min-w-0 flex-1">
+                          <p className="break-words text-sm text-neutral-200">{message.text}</p>
+                          <div className="mt-2 flex items-center gap-3 text-xs text-text-muted">
+                            {message.sender && (
+                              <>
+                                <span>Sender: {message.sender}</span>
+                                <span>•</span>
+                              </>
+                            )}
+                            <span>Time: {new Date(message.created_at).toLocaleString([], {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

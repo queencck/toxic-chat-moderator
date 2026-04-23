@@ -15,7 +15,7 @@ SECRET_TOKEN = os.getenv('SECRET_TOKEN')
 
 # API Constants
 BOT_CREATE_ENDPOINT = '/bots/create/'
-MESSAGE_ENDPOINT = '/moderate/message/'
+MESSAGE_ENDPOINT = '/moderates/moderate/'
 BOT_PLATFORM_DISCORD = 'Discord'
 BOT_UUID_RESPONSE_KEY = 'bot_id'
 

@@ -119,7 +119,7 @@ export interface LinkBotResponse {
 }
 
 export async function login(username: string, password: string): Promise<LoginResponse> {
-  const data = await request<LoginResponse>("/v1/login/", {
+  const data = await request<LoginResponse>("/v1/users/login/", {
     method: "POST",
     body: JSON.stringify({ username, password }),
   });
@@ -137,7 +137,7 @@ export async function register(fields: {
   first_name: string;
   last_name: string;
 }): Promise<RegisterResponse> {
-  return request<RegisterResponse>("/v1/register/", {
+  return request<RegisterResponse>("/v1/users/register/", {
     method: "POST",
     body: JSON.stringify(fields),
   });
@@ -162,13 +162,6 @@ export interface HourlyStat {
   active_users: number;
 }
 
-export interface PeriodModStats {
-  period: string;
-  total_chats: number;
-  flagged_chats: number;
-  flagging_percentage: number;
-}
-
 export interface FlaggedMessage {
   text: string;
   toxicity: number;
@@ -176,17 +169,14 @@ export interface FlaggedMessage {
   created_at: string;
 }
 
-export interface ModerationStats {
-  stats_by_period: PeriodModStats[];
+export interface BotStats {
+  hourly_records: HourlyStat[];
+  flagged_count: number;
   flagged_messages: FlaggedMessage[];
 }
 
-export async function getBotActivityStats(botId: string): Promise<HourlyStat[]> {
-  return request<HourlyStat[]>(`/v1/moderate/stats/?bot_id=${botId}`);
-}
-
-export async function getBotModerationStats(botId: string): Promise<ModerationStats> {
-  return request<ModerationStats>(`/v1/moderate/moderation-stats/?bot_id=${botId}`);
+export async function getBotStats(botId: string): Promise<BotStats> {
+  return request<BotStats>(`/v1/moderates/stats/?bot_id=${botId}`);
 }
 
 export interface AuditLogEntry {
