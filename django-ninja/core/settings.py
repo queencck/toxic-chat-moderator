@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^e8sr-u18p9f1h@(m=)gai#t2!j%_yxm3tfea2(+v37qpyz2sq'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-only-change-me')
 
 BOT_SECRET_TOKEN = os.getenv('SECRET_TOKEN')
 ML_MODEL_SERVER_URL = os.getenv('ML_MODEL_SERVER_URL', 'localhost:8080')
