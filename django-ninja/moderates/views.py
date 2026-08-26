@@ -3,6 +3,8 @@ from uuid import UUID
 
 import httpx
 from django.conf import settings
+from django.db.models import Count
+from django.db.models.functions import TruncHour
 from django.utils import timezone
 from ninja import Router
 from ninja_jwt.authentication import JWTAuth
@@ -12,35 +14,44 @@ from bots.models import Bot, BotHourlyStat
 from users.schemas import ErrorSchema
 
 from .models import TextChat
-from .schemas import ModerateRequestSchema, ModerateResponseSchema, StatsResponseSchema
+from .schemas import (
+    AuditLogResponseSchema,
+    ModerateRequestSchema,
+    ModerateResponseSchema,
+    StatsResponseSchema,
+)
 
 router = Router()
 
 ACTIVITY_RANGE = timedelta(days=30)
 MODERATION_RANGE = timedelta(hours=12)
+AUDIT_LOG_RANGE = timedelta(days=7)
 TOXICITY_THRESHOLD = 0.6
+FLAGGED_PREVIEW_LIMIT = 50
 
 
 def _activity_stats(bot, now):
     since = now - ACTIVITY_RANGE
-    chat_counts = {
-        stat['timestamp']: stat['chat_count']
-        for stat in BotHourlyStat.objects.filter(bot=bot, timestamp__gte=since).values('timestamp', 'chat_count')
-    }
+    chat_counts = dict(
+        BotHourlyStat.objects.filter(bot=bot, timestamp__gte=since).values_list('timestamp', 'chat_count')
+    )
+
+    # Group the whole window by hour
+    active_users = dict(
+        TextChat.objects.filter(bot=bot, created_at__gte=since)
+        .annotate(hour=TruncHour('created_at'))
+        .values('hour')
+        .annotate(active_users=Count('sender', distinct=True))
+        .values_list('hour', 'active_users')
+    )
 
     stats = []
     current_hour = since
     while current_hour <= now:
-        hour_end = current_hour + timedelta(hours=1)
-        active_users = TextChat.objects.filter(
-            bot=bot,
-            created_at__gte=current_hour,
-            created_at__lt=hour_end,
-        ).values('sender').distinct().count()
         stats.append({
             'hour': current_hour,
             'chat_count': chat_counts.get(current_hour, 0),
-            'active_users': active_users,
+            'active_users': active_users.get(current_hour, 0),
         })
         current_hour += timedelta(hours=1)
 
@@ -52,19 +63,65 @@ def _moderation_stats(bot, now):
         bot=bot,
         created_at__gte=now - MODERATION_RANGE,
         toxicity__gte=TOXICITY_THRESHOLD,
-    ).order_by('-created_at')
+    )
 
     return {
         'flagged_count': flagged.count(),
-        'flagged_messages': [
+        'flagged_messages': list(
+            flagged.order_by('-created_at')
+            .values('text', 'toxicity', 'sender', 'created_at')[:FLAGGED_PREVIEW_LIMIT]
+        ),
+    }
+
+
+@router.get('/logs/', response={200: AuditLogResponseSchema, 404: ErrorSchema}, auth=JWTAuth())
+def get_audit_log(
+    request,
+    bot_id: UUID,
+    page: int = 1,
+    page_size: int = 20,
+    search: str = '',
+    sender: str = '',
+    flagged: bool = False,
+):
+    """Get paginated chat messages for a bot from the last 7 days with filtering."""
+    bot = Bot.objects.filter(uuid=bot_id, user=request.user).first()
+    if not bot:
+        return 404, {'detail': 'Bot not found or unauthorized.'}
+
+    messages = TextChat.objects.filter(
+        bot=bot,
+        created_at__gte=timezone.now() - AUDIT_LOG_RANGE,
+    ).order_by('-created_at')
+
+    if search := search.strip():
+        messages = messages.filter(text__icontains=search)
+    if sender := sender.strip():
+        messages = messages.filter(sender__icontains=sender)
+    if flagged:
+        messages = messages.filter(toxicity__gte=TOXICITY_THRESHOLD)
+
+    total = messages.count()
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    page = min(max(page, 1), total_pages)
+    offset = (page - 1) * page_size
+
+    return 200, {
+        'results': [
             {
+                'id': chat.id,
                 'text': chat.text,
                 'toxicity': chat.toxicity,
                 'sender': chat.sender,
                 'created_at': chat.created_at,
+                'model_version': chat.model_version,
             }
-            for chat in flagged
+            for chat in messages[offset:offset + page_size]
         ],
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': total_pages,
     }
 
 

@@ -41,5 +41,13 @@ class LoginResponseSchema(Schema):
     user: UserSchema
 
 
+class TokenRefreshRequestSchema(Schema):
+    refresh: str
+
+
+class TokenRefreshResponseSchema(Schema):
+    access: str
+
+
 class ErrorSchema(Schema):
     detail: str

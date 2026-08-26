@@ -38,3 +38,20 @@ class ModerateResponseSchema(Schema):
     sender: str
     created_at: datetime
     model_version: str
+
+
+class AuditLogEntrySchema(Schema):
+    id: int
+    text: str
+    toxicity: float
+    sender: str
+    created_at: datetime
+    model_version: str
+
+
+class AuditLogResponseSchema(Schema):
+    results: list[AuditLogEntrySchema]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

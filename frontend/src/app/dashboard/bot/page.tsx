@@ -23,6 +23,68 @@ import {
 
 type Tab = "activities" | "audit-log" | "configuration";
 
+type FilterDef = {
+  id: string;
+  name: string;
+  description: string;
+  Icon: (props: { className?: string }) => ReactNode;
+};
+
+const FILTERS: FilterDef[] = [
+  {
+    id: "hate-speech",
+    name: "Hate Speech",
+    description: "Detect slurs, discrimination, and hateful content targeting groups.",
+    Icon: ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path fillRule="evenodd" d="M9.401 3.003c1.155-2.003 4.043-2.003 5.197 0l7.355 12.748c1.154 2.001-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.499-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    id: "nsfw",
+    name: "NSFW Content",
+    description: "Block sexually explicit or adult-oriented messages.",
+    Icon: ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM6.165 6.165a8.25 8.25 0 0111.67 11.67L6.165 6.165zM12 20.25a8.25 8.25 0 01-6.75-12.97l11.72 11.72a8.21 8.21 0 01-4.97 1.25z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    id: "spamming",
+    name: "Spamming",
+    description: "Suppress repetitive messages, mass-tags, and link spam.",
+    Icon: ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
+        <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
+      </svg>
+    ),
+  },
+  {
+    id: "self-promotion",
+    name: "Self-Promotion",
+    description: "Catch unsolicited advertising, referral links, and self-marketing.",
+    Icon: ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path fillRule="evenodd" d="M9.638 1.093a.75.75 0 01.724 0l2 1.104a.75.75 0 11-.724 1.313L10 2.607l-1.638.903a.75.75 0 11-.724-1.313l2-1.104zM5.403 4.287a.75.75 0 01-.295 1.019l-.805.444.805.444a.75.75 0 01-.724 1.314L3.5 6.866v.633a.75.75 0 01-1.5 0v-1.9a.75.75 0 01.388-.658l1.996-1.1a.75.75 0 011.019.296zm9.194 0a.75.75 0 011.02-.295l1.995 1.1A.75.75 0 0118 5.75v1.9a.75.75 0 01-1.5 0v-.633l-.884.488a.75.75 0 11-.724-1.314l.806-.444-.806-.444a.75.75 0 01-.295-1.02zM7.343 8.284a.75.75 0 011.02-.294L10 8.893l1.638-.903a.75.75 0 11.724 1.313l-1.612.89v1.557a.75.75 0 01-1.5 0v-1.557l-1.612-.89a.75.75 0 01-.295-1.019zM2.75 11.5a.75.75 0 01.75.75v1.704l1.273-.764a.75.75 0 11.772 1.286l-1.71 1.025 1.71 1.025a.75.75 0 11-.772 1.286L3.5 17.046v1.704a.75.75 0 01-1.5 0V12.25a.75.75 0 01.75-.75zm14.5 0a.75.75 0 01.75.75v6.5a.75.75 0 01-1.5 0v-1.704l-1.273.764a.75.75 0 11-.772-1.286l1.71-1.025-1.71-1.025a.75.75 0 11.772-1.286l1.273.764V12.25a.75.75 0 01.75-.75zM10 13a.75.75 0 01.75.75v1.557l1.612.89a.75.75 0 01-.724 1.313L10 16.607l-1.638.903a.75.75 0 11-.724-1.313l1.612-.89V13.75A.75.75 0 0110 13z" clipRule="evenodd" />
+        <path d="M2.617 19.534a.75.75 0 011.02-.295l.805.444V18.5a.75.75 0 011.5 0v1.9a.75.75 0 01-.388.659l-1.996 1.1a.75.75 0 11-.94-1.225z" />
+      </svg>
+    ),
+  },
+  {
+    id: "diff-speech",
+    name: "Diff Speech",
+    description: "Detect divisive or inflammatory rhetoric that escalates conflict.",
+    Icon: ({ className }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path fillRule="evenodd" d="M4.848 2.771A49.144 49.144 0 0112 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 01-3.476.383.39.39 0 00-.297.17l-2.755 4.133a.75.75 0 01-1.248 0l-2.755-4.133a.39.39 0 00-.297-.17 48.9 48.9 0 01-3.476-.384c-1.978-.29-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.68 3.348-3.97zM6.75 8.25a.75.75 0 01.75-.75h9a.75.75 0 010 1.5h-9a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H7.5z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+];
+
 const RANGES: { label: string; value: StatsRange }[] = [
   { label: "48h", value: "48h" },
   { label: "7d", value: "7d" },
@@ -74,6 +136,18 @@ function BotMonitorContent() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [appliedSender, setAppliedSender] = useState("");
   const [appliedFlagged, setAppliedFlagged] = useState(false);
+
+  // Configuration filters state
+  const [filterSettings, setFilterSettings] = useState<Record<string, { enabled: boolean }>>(() =>
+    Object.fromEntries(FILTERS.map((f) => [f.id, { enabled: true }])),
+  );
+
+  const toggleFilter = (id: string) => {
+    setFilterSettings((prev) => ({
+      ...prev,
+      [id]: { enabled: !prev[id].enabled },
+    }));
+  };
 
   // Save last-visited bot UUID to localStorage
   useEffect(() => {
@@ -262,9 +336,21 @@ function BotMonitorContent() {
             ))}
           </div>
 
-          {/* Chat Activity Chart */}
+          {/* Chat Activity & Active Users */}
           <div className="rounded-md border border-border-subtle bg-surface-card p-6">
-            <h2 className="mb-4 text-sm font-medium text-text-muted">Chat Activity</h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-medium text-text-muted">Chat Activity & Active Users</h2>
+              <div className="flex items-center gap-4 text-xs text-text-muted">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[#5a9ee8]" />
+                  Chats
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[#65c193]" />
+                  Active Users
+                </span>
+              </div>
+            </div>
             {statsLoading ? (
               <div className="flex h-72 items-center justify-center">
                 <p className="text-sm text-text-muted">Loading stats...</p>
@@ -278,8 +364,12 @@ function BotMonitorContent() {
                 <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="chatGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f97316" stopOpacity={0.15} />
-                      <stop offset="100%" stopColor="#f97316" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#5a9ee8" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#5a9ee8" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#65c193" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#65c193" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2025" />
@@ -294,8 +384,19 @@ function BotMonitorContent() {
                     tickLine={false}
                   />
                   <YAxis
+                    yAxisId="left"
+                    orientation="left"
                     allowDecimals={false}
-                    tick={{ fill: "#9ca3af", fontSize: 11 }}
+                    tick={{ fill: "#5a9ee8", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={40}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    allowDecimals={false}
+                    tick={{ fill: "#65c193", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
                     width={40}
@@ -306,78 +407,29 @@ function BotMonitorContent() {
                       border: "1px solid #1f2025",
                       borderRadius: "8px",
                       fontSize: "12px",
+                      padding: "8px 12px",
+                      lineHeight: "18px",
                     }}
-                    labelStyle={{ color: "#9ca3af" }}
-                    itemStyle={{ color: "#f97316" }}
+                    labelStyle={{ color: "#9ca3af", marginBottom: "4px", lineHeight: "18px" }}
+                    itemStyle={{ padding: 0, margin: 0, lineHeight: "18px" }}
                     labelFormatter={formatTooltipLabel}
+                    itemSorter={(item) => (item.dataKey === "chat_count" ? 0 : 1)}
                   />
                   <Area
+                    yAxisId="left"
                     type="monotone"
                     dataKey="chat_count"
                     name="Chats"
-                    stroke="#f97316"
+                    stroke="#5a9ee8"
                     strokeWidth={1.5}
                     fill="url(#chatGrad)"
                   />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          {/* Active Users Chart */}
-          <div className="rounded-md border border-border-subtle bg-surface-card p-6">
-            <h2 className="mb-4 text-sm font-medium text-text-muted">Active Users</h2>
-            {statsLoading ? (
-              <div className="flex h-72 items-center justify-center">
-                <p className="text-sm text-text-muted">Loading stats...</p>
-              </div>
-            ) : !stats || chartData.length === 0 ? (
-              <div className="flex h-72 items-center justify-center">
-                <p className="text-sm text-text-muted">No activity data available.</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={320}>
-                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="usersGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.15} />
-                      <stop offset="100%" stopColor="#06b6d4" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2025" />
-                  <XAxis
-                    dataKey="ts"
-                    type="number"
-                    domain={["dataMin", "dataMax"]}
-                    ticks={buildTicks()}
-                    tickFormatter={(v) => formatTick(new Date(v).toISOString(), range)}
-                    tick={{ fill: "#9ca3af", fontSize: 11 }}
-                    axisLine={{ stroke: "#1f2025" }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tick={{ fill: "#9ca3af", fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={40}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#0b0c0f",
-                      border: "1px solid #1f2025",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                    labelStyle={{ color: "#9ca3af" }}
-                    itemStyle={{ color: "#06b6d4" }}
-                    labelFormatter={formatTooltipLabel}
-                  />
                   <Area
+                    yAxisId="right"
                     type="monotone"
                     dataKey="active_users"
                     name="Active Users"
-                    stroke="#06b6d4"
+                    stroke="#65c193"
                     strokeWidth={1.5}
                     fill="url(#usersGrad)"
                   />
@@ -581,16 +633,56 @@ function BotMonitorContent() {
       )}
 
       {tab === "configuration" && (
-        <div className="space-y-6">
-          <div className="flex h-72 items-center justify-center rounded-md border border-border-subtle bg-surface-card">
-            <div className="text-center">
-              <svg className="mx-auto h-10 w-10 text-text-muted/40" viewBox="0 0 24 24" fill="currentColor">
-                <path fillRule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 00-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 00-2.282.819l-.922 1.597a1.875 1.875 0 00.432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 000 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 00-.432 2.385l.922 1.597a1.875 1.875 0 002.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 002.28-.819l.923-1.597a1.875 1.875 0 00-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 000-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 00-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 00-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 00-1.85-1.567h-1.843zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" clipRule="evenodd" />
-              </svg>
-              <p className="mt-3 text-sm font-medium text-text-muted">Bot Configuration</p>
-              <p className="mt-1 text-xs text-text-muted/60">Manage bot settings, thresholds, and integrations here.</p>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {FILTERS.map((filter) => {
+            const settings = filterSettings[filter.id];
+            return (
+              <div
+                key={filter.id}
+                className="flex flex-col rounded-md bg-surface-card"
+              >
+                <div className="flex flex-1 flex-col gap-4 p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/5 text-text-primary">
+                      <filter.Icon className="h-6 w-6" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[15px] font-semibold text-text-primary">
+                        {filter.name}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                        {filter.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-border-subtle px-5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleFilter(filter.id)}
+                    className="flex items-center gap-2.5"
+                  >
+                    <span
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                        settings.enabled ? "bg-accent" : "bg-white/10"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${
+                          settings.enabled ? "translate-x-[18px]" : "translate-x-0.5"
+                        }`}
+                      />
+                    </span>
+                    <span className="text-xs font-medium text-text-muted">
+                      {settings.enabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

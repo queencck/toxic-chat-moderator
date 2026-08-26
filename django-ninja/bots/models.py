@@ -39,5 +39,10 @@ class BotHourlyStat(models.Model):
     chat_count = models.IntegerField(default=0)
     timestamp = models.DateTimeField()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['bot', 'timestamp'], name='hourlystat_bot_ts_idx'),
+        ]
+
     def __str__(self):
         return f"{self.bot} - {self.timestamp}"

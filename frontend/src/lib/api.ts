@@ -20,7 +20,7 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!refreshToken) return null;
 
   try {
-    const res = await fetch(`${API_BASE}/token/refresh/`, {
+    const res = await fetch(`${API_BASE}/v1/users/refresh/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh: refreshToken }),
@@ -213,7 +213,7 @@ export async function getBotAuditLog(params: AuditLogParams): Promise<AuditLogRe
   if (params.sender) qs.set("sender", params.sender);
   if (params.search) qs.set("search", params.search);
   if (params.flagged) qs.set("flagged", "true");
-  return request<AuditLogResponse>(`/v1/moderate/audit-log/?${qs.toString()}`);
+  return request<AuditLogResponse>(`/v1/moderates/logs/?${qs.toString()}`);
 }
 
 

@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from django.db import IntegrityError
 from ninja import Router
+from ninja_jwt.exceptions import TokenError
 from ninja_jwt.tokens import RefreshToken
 
 from .models import User
@@ -10,6 +11,8 @@ from .schemas import (
     LoginResponseSchema,
     RegisterRequestSchema,
     RegisterResponseSchema,
+    TokenRefreshRequestSchema,
+    TokenRefreshResponseSchema,
     UserSchema,
 )
 
@@ -45,3 +48,14 @@ def login(request, payload: LoginRequestSchema):
         'refresh': str(refresh),
         'user': UserSchema.from_orm(user),
     }
+
+
+@router.post('/refresh/', response={200: TokenRefreshResponseSchema, 401: ErrorSchema}, auth=None)
+def token_refresh(request, payload: TokenRefreshRequestSchema):
+    """Issue a new access token from a valid refresh token."""
+    try:
+        refresh = RefreshToken(payload.refresh)
+    except TokenError:
+        return 401, {'detail': 'Invalid or expired refresh token'}
+
+    return 200, {'access': str(refresh.access_token)}
