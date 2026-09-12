@@ -40,6 +40,11 @@ class BotHourlyStat(models.Model):
     timestamp = models.DateTimeField()
 
     class Meta:
+        constraints = [
+            # Required for get_or_create to be race-safe: without it two threads
+            # can both miss the SELECT and both INSERT a row for the same hour.
+            models.UniqueConstraint(fields=['bot', 'timestamp'], name='unique_bot_hour'),
+        ]
         indexes = [
             models.Index(fields=['bot', 'timestamp'], name='hourlystat_bot_ts_idx'),
         ]

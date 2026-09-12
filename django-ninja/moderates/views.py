@@ -3,7 +3,7 @@ from uuid import UUID
 
 import httpx
 from django.conf import settings
-from django.db.models import Count
+from django.db.models import Count, F
 from django.db.models.functions import TruncHour
 from django.utils import timezone
 from ninja import Router
@@ -28,6 +28,18 @@ MODERATION_RANGE = timedelta(hours=12)
 AUDIT_LOG_RANGE = timedelta(days=7)
 TOXICITY_THRESHOLD = 0.6
 FLAGGED_PREVIEW_LIMIT = 50
+
+# One client per worker process, reused across requests. Building a client per
+# call costs ~13ms, almost all of it SSL context setup. The internal pool lets
+# every thread in this worker have a request in flight at once.
+_ml_client = httpx.Client(
+    timeout=10.0,
+    limits=httpx.Limits(
+        max_connections=100,
+        max_keepalive_connections=20,
+        keepalive_expiry=30.0,
+    ),
+)
 
 
 def _activity_stats(bot, now):
@@ -149,10 +161,9 @@ def moderate(request, payload: ModerateRequestSchema):
         return 400, {'detail': 'Bot is not linked to a user.'}
 
     try:
-        response = httpx.post(
+        response = _ml_client.post(
             f'http://{settings.ML_MODEL_SERVER_URL}/api/v1/classify',
             json={'text': payload.text},
-            timeout=10.0,
         )
         response.raise_for_status()
     except httpx.ConnectError:
@@ -171,14 +182,11 @@ def moderate(request, payload: ModerateRequestSchema):
         model_version=result.get('model_version', 'unknown'),
     )
 
+    # Increment in the database, not in Python: read-modify-write here would
+    # lose counts whenever two messages for the same bot land in the same hour.
     hour = chat.created_at.replace(minute=0, second=0, microsecond=0)
-    hourly_stat, _ = BotHourlyStat.objects.get_or_create(
-        bot=bot,
-        timestamp=hour,
-        defaults={'chat_count': 0},
-    )
-    hourly_stat.chat_count += 1
-    hourly_stat.save(update_fields=['chat_count'])
+    BotHourlyStat.objects.get_or_create(bot=bot, timestamp=hour, defaults={'chat_count': 0})
+    BotHourlyStat.objects.filter(bot=bot, timestamp=hour).update(chat_count=F('chat_count') + 1)
 
     return 201, {
         'text': chat.text,
