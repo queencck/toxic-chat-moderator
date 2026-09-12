@@ -36,15 +36,13 @@ services:
       DJANGO_PARENT_HOST: localhost
       DJANGO_CORS_ORIGINS: http://localhost:3000
       DJANGO_CSRF_ORIGINS: http://localhost:3000
-      # The inference engine runs on the host, not in compose. Inside the
-      # container `localhost` is the container, so reach the host explicitly.
-      ML_MODEL_SERVER_URL: host.docker.internal:8080
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      ML_MODEL_SERVER_URL: inference:8080
     ports:
       - "8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      inference:
         condition: service_healthy
 
   web:
@@ -56,6 +54,43 @@ services:
       - "3000:3000"
     depends_on:
       - api
+
+  inference:
+    build: ./inference-engine
+    ports:
+      # Published so the load test can hit the model directly. Only the api
+      # container needs it otherwise, over the compose network.
+      - "8080:8080"
+    # Comment this block out to run on CPU. Requires the NVIDIA container
+    # toolkit on the host; without it the container fails to start.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      # python rather than curl: the slim base image has no HTTP client.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/health').status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      # The model takes ~20s to load; failures before this don't count.
+      start_period: 60s
+
+  bot:
+    build: ./bot-services
+    env_file:
+      - ./bot-services/.env
+    environment:
+      # Reach the api over the compose network, not the published port.
+      # The Host header is what django-hosts routes on.
+      DJANGO_API_URL: http://api:8000/v1
+      DJANGO_API_HOST: api.localhost
+    depends_on:
+      - api
+    restart: unless-stopped
 
 volumes:
   pgdata:
