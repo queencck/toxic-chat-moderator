@@ -2,7 +2,6 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
     # Pin the download caches somewhere predictable so the weights baked in
     # below are the ones found at runtime, whatever user the container runs as.
     HF_HOME=/app/.cache/huggingface \
@@ -10,11 +9,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# torch ships CUDA libraries inside its wheel, so no nvidia base image is
-# needed -- but that is also why this layer is several GB. Kept separate from
-# the source so it stays cached across code changes.
+# torch ships the CUDA libraries inside its wheel, so no nvidia base image is
+# needed -- but it is ~5GB of the ~6GB of dependencies, and it changes far less
+# often than everything else. Installing it in its own layer means editing
+# requirements.txt rebuilds only the small layer below.
+#
+# The cache mount keeps pip's downloaded wheels between builds. It lives
+# outside the image, so it costs nothing in the final size, and it means even
+# an invalidated layer reinstalls from disk rather than re-downloading.
+ARG TORCH_VERSION=2.11.0
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install "torch==${TORCH_VERSION}"
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 COPY . .
 
