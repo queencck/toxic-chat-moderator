@@ -3,8 +3,6 @@ import logging
 import torch
 from detoxify import Detoxify
 
-from app.config import settings
-
 logger = logging.getLogger(__name__)
 
 LABELS = ["toxicity", "severe_toxicity", "obscene", "threat", "insult", "identity_attack"]
@@ -15,7 +13,6 @@ class ToxicityClassifier:
         self.model: Detoxify | None = None
         self.model_version = "toxic-bert-v1"
         self.device = "cpu"
-        self.quantized = False
 
     def load(self) -> None:
         if torch.cuda.is_available():
@@ -24,14 +21,8 @@ class ToxicityClassifier:
         else:
             logger.info("CUDA not available — loading model on CPU")
         self.model = Detoxify("original", device=self.device)
-
-        if settings.quantize_model:
-            logger.info("Applying FP16 half-precision quantization...")
-            self.model.model.half()
-            self.quantized = True
-            logger.info("FP16 quantization applied successfully.")
-        else:
-            logger.info("Model quantization disabled by configuration.")
+        self.model.model.eval()
+        logger.info("Model loaded on %s in fp32.", self.device)
 
     def predict(self, text: str) -> dict[str, float]:
         if self.model is None:

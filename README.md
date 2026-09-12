@@ -55,7 +55,6 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/toxic_moderat
 TOXICITY_THRESHOLD=0.5
 BATCH_MAX_SIZE=256
 BATCH_TIMEOUT_MS=5.0
-QUANTIZE_MODEL=true
 API_V1_PREFIX=/api/v1
 ```
 
@@ -162,7 +161,6 @@ Key settings in `app/config.py`:
 | `toxicity_threshold` | 0.5 | Toxicity confidence threshold (0-1) |
 | `batch_max_size` | 256 | Maximum batch size for inference |
 | `batch_timeout_ms` | 5.0 | Maximum wait time before processing batch |
-| `quantize_model` | True | Use quantized model for faster inference |
 | `api_v1_prefix` | /api/v1 | API endpoint prefix |
 
 ## Load Testing
