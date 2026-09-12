@@ -76,3 +76,6 @@ db.sqlite3
 staticfiles/
 media/
 .venv-loadtest/
+
+# Claude Code personal settings (machine-specific, not shared)
+.claude/settings.local.json
