@@ -9,6 +9,11 @@ services:
       - "${DB_PORT}:${DB_PORT}"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -16,6 +21,41 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redisdata:/data
+
+  api:
+    build: ./django-ninja
+    env_file:
+      - ./django-ninja/.env
+    environment:
+      DB_HOST: db
+      # Local development only. Gives real tracebacks instead of bare 500s.
+      # Production sets this False (the settings default) -- the debug page
+      # leaks source, local variables and settings to whoever triggers it.
+      DJANGO_DEBUG: "True"
+      DJANGO_ALLOWED_HOSTS: localhost,api.localhost,admin.localhost,127.0.0.1
+      DJANGO_PARENT_HOST: localhost
+      DJANGO_CORS_ORIGINS: http://localhost:3000
+      DJANGO_CSRF_ORIGINS: http://localhost:3000
+      # The inference engine runs on the host, not in compose. Inside the
+      # container `localhost` is the container, so reach the host explicitly.
+      ML_MODEL_SERVER_URL: host.docker.internal:8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
 
 volumes:
   pgdata:

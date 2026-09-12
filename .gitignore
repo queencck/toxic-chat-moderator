@@ -75,3 +75,4 @@ Thumbs.db
 db.sqlite3
 staticfiles/
 media/
+.venv-loadtest/

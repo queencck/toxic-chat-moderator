@@ -30,14 +30,39 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-only-change-me'
 BOT_SECRET_TOKEN = os.getenv('SECRET_TOKEN')
 ML_MODEL_SERVER_URL = os.getenv('ML_MODEL_SERVER_URL', 'localhost:8080')
 
+def _csv(name, default=''):
+    return [v.strip() for v in os.getenv(name, default).split(',') if v.strip()]
+
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = ['localhost', 'api.localhost', 'admin.localhost', '127.0.0.1', 'api.127.0.0.1', 'admin.127.0.0.1']
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
+# In production set DJANGO_ALLOWED_HOSTS and DJANGO_PARENT_HOST, e.g.
+#   DJANGO_ALLOWED_HOSTS=api.example.com,admin.example.com
+#   DJANGO_PARENT_HOST=example.com
+ALLOWED_HOSTS = _csv('DJANGO_ALLOWED_HOSTS') or [
+    'localhost', 'api.localhost', 'admin.localhost',
+    '127.0.0.1', 'api.127.0.0.1', 'admin.127.0.0.1',
 ]
+
+# django-hosts strips this suffix before matching a subdomain against core.hosts.
+PARENT_HOST = os.getenv('DJANGO_PARENT_HOST', '')
+
+CORS_ALLOWED_ORIGINS = _csv('DJANGO_CORS_ORIGINS') or ['http://localhost:3000']
+CSRF_TRUSTED_ORIGINS = _csv('DJANGO_CSRF_ORIGINS') or ['http://localhost:3000']
+
+# App Runner terminates TLS and forwards over HTTP, so Django needs the header
+# to know the original request was secure.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Start low. Raise to 31536000 and add preload only once you're sure every
+    # subdomain will serve HTTPS forever — browsers cache this and won't forget.
+    SECURE_HSTS_SECONDS = int(os.getenv('DJANGO_HSTS_SECONDS', '3600'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # No SECURE_SSL_REDIRECT: App Runner's public endpoint is HTTPS-only, and a
+    # redirect would break its plain-HTTP health check against the container.
 
 # Application definition
 
@@ -60,6 +85,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django_hosts.middleware.HostsRequestMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -104,6 +130,11 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
+        # Persist connections between requests; opening one costs ~5ms.
+        # Total held = workers x threads x servers, so keep that under
+        # the server's max_connections.
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
@@ -143,4 +174,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    # Serves the admin's CSS/JS straight from the container, compressed and
+    # hashed for caching. Avoids needing S3/CloudFront just for the admin.
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
 
