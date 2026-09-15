@@ -20,6 +20,9 @@ RUN DJANGO_SECRET_KEY=build-only DJANGO_DEBUG=False \
 
 EXPOSE 8000
 
-# App Runner sends traffic to 8000. Two workers x four threads keeps the
-# Postgres connection count low (see CONN_MAX_AGE in settings).
-CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 4 --timeout 60 --access-logfile - --error-logfile -"]
+# App Runner sends traffic to 8000
+#
+# Each thread holds a Postgres connection for CONN_MAX_AGE seconds, so this
+# is 32 connections per instance. Keep instances x 32 under the server's
+# max_connections (roughly 97 usable on a db.t4g.micro).
+CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 8 --timeout 60 --access-logfile - --error-logfile -"]

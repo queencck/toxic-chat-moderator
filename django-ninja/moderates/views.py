@@ -33,7 +33,10 @@ FLAGGED_PREVIEW_LIMIT = 50
 # call costs ~13ms, almost all of it SSL context setup. The internal pool lets
 # every thread in this worker have a request in flight at once.
 _ml_client = httpx.Client(
-    timeout=10.0,
+    # Must exceed the inference engine's own max_wait_ms (2s) so the server
+    # sheds deliberately with a 503, and stay under the bot's timeout so the
+    # deadlines nest: 2s < 3s < 10s.
+    timeout=3.0,
     limits=httpx.Limits(
         max_connections=100,
         max_keepalive_connections=20,
@@ -169,6 +172,10 @@ def moderate(request, payload: ModerateRequestSchema):
     except httpx.ConnectError:
         return 503, {'detail': 'ML model server is unavailable'}
     except httpx.HTTPStatusError as e:
+        # Pass overload through as overload. Flattening it to 502 would tell
+        # the bot the service is broken when it is merely busy.
+        if e.response.status_code == 503:
+            return 503, {'detail': 'Moderation service is busy, retry shortly'}
         return 502, {'detail': f'ML model server returned {e.response.status_code}'}
     except httpx.TimeoutException:
         return 504, {'detail': 'ML model server request timed out'}

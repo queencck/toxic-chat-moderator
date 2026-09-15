@@ -28,6 +28,8 @@ async def lifespan(app: FastAPI):
         classifier,
         max_batch_size=settings.batch_max_size,
         timeout_ms=settings.batch_timeout_ms,
+        max_queue_size=settings.batch_max_queue,
+        max_wait_ms=settings.batch_max_wait_ms,
     )
     await batcher.start()
     app.state.batcher = batcher
